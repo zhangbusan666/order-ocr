@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.flask_ocr.log
+uploads/
+*.jpg
+*.png
+*.jpeg
+.DS_Store

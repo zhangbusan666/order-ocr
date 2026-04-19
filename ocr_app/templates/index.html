@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>艾康健 · 测序订单 OCR 识别系统</title>
+  <link rel="stylesheet" href="/static/css/main.css" />
+</head>
+<body>
+
+<!-- ══════════════ 顶部导航 ══════════════ -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="36" height="36" rx="10" fill="url(#grad1)"/>
+          <path d="M8 18 Q18 8 28 18 Q18 28 8 18Z" fill="rgba(255,255,255,0.9)"/>
+          <circle cx="18" cy="18" r="4" fill="#2563eb"/>
+          <defs>
+            <linearGradient id="grad1" x1="0" y1="0" x2="36" y2="36">
+              <stop offset="0%" stop-color="#1e40af"/>
+              <stop offset="100%" stop-color="#3b82f6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">艾康健</span>
+        <span class="brand-sub">智能订单识别系统</span>
+      </div>
+    </div>
+    <nav class="topbar-nav">
+      <span class="nav-badge">
+        <span class="dot dot--green"></span>
+        PaddleOCR 引擎
+      </span>
+      <button class="btn btn--ghost" id="themeToggle" aria-label="切换主题">
+        <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- ══════════════ 主体 ══════════════ -->
+<main class="main-container">
+
+  <!-- 左侧：上传区 -->
+  <section class="panel panel--upload">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        上传订单图片
+      </h2>
+      <p class="panel-desc">支持拍照上传或扫描件，支持 JPG / PNG / TIFF</p>
+    </div>
+
+    <!-- 拖拽上传区 -->
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" hidden />
+      <div class="drop-zone__content" id="dropContent">
+        <div class="drop-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" rx="16" fill="var(--accent-soft)"/>
+            <path d="M32 16v20M22 26l10-10 10 10" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 44h32" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+            <rect x="12" y="44" width="40" height="8" rx="4" fill="var(--accent)" opacity="0.15"/>
+          </svg>
+        </div>
+        <p class="drop-primary">拖拽图片到此处</p>
+        <p class="drop-secondary">或</p>
+        <button class="btn btn--primary" id="selectBtn">选择文件</button>
+        <p class="drop-hint">最大 20MB · 推荐分辨率 ≥ 300 DPI</p>
+      </div>
+      <div class="drop-zone__preview" id="dropPreview" style="display:none">
+        <img id="previewImg" alt="预览" />
+        <div class="preview-overlay">
+          <button class="btn btn--ghost-white" id="changeBtn">更换图片</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="upload-actions">
+      <button class="btn btn--primary btn--lg btn--full" id="recognizeBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span id="recognizeBtnText">开始识别</span>
+      </button>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-wrap" id="progressWrap" style="display:none">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <p class="progress-label" id="progressLabel">正在加载 PaddleOCR 引擎...</p>
+    </div>
+
+    <!-- 快捷提示 -->
+    <div class="tips-card">
+      <p class="tips-title">💡 拍摄建议</p>
+      <ul class="tips-list">
+        <li>保持图片清晰，避免模糊或过曝</li>
+        <li>确保表格内容完整呈现在画面中</li>
+        <li>手写内容请工整填写，提高识别率</li>
+        <li>支持扫描仪高清扫描件（推荐）</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 右侧：识别结果 -->
+  <section class="panel panel--result">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        识别结果
+      </h2>
+      <div class="panel-actions" id="resultActions" style="display:none">
+        <button class="btn btn--sm btn--ghost" id="copyJsonBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          复制 JSON
+        </button>
+        <button class="btn btn--sm btn--ghost" id="exportCsvBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出 CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- 空状态 -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-illustration">
+        <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="10" width="80" height="80" rx="8" fill="var(--surface-2)" stroke="var(--border)" stroke-width="2"/>
+          <rect x="30" y="25" width="60" height="6" rx="3" fill="var(--border)"/>
+          <rect x="30" y="38" width="45" height="5" rx="2.5" fill="var(--border)" opacity="0.6"/>
+          <rect x="30" y="50" width="50" height="5" rx="2.5" fill="var(--border)" opacity="0.6"/>
+          <rect x="30" y="62" width="35" height="5" rx="2.5" fill="var(--border)" opacity="0.4"/>
+          <circle cx="88" cy="78" r="18" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <path d="M82 78l4 4 8-8" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <p class="empty-title">等待上传图片</p>
+      <p class="empty-desc">上传订单图片后，识别结果将在此处展示</p>
+    </div>
+
+    <!-- 结果内容 -->
+    <div class="result-content" id="resultContent" style="display:none">
+
+      <!-- Tab 切换 -->
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="structured">结构化视图</button>
+        <button class="tab" data-tab="raw">原始文本</button>
+        <button class="tab" data-tab="json">JSON 数据</button>
+      </div>
+
+      <!-- 结构化视图 -->
+      <div class="tab-pane tab-pane--active" id="tab-structured">
+
+        <!-- 客户信息 -->
+        <div class="result-section">
+          <h3 class="result-section-title">
+            <span class="section-badge section-badge--blue">客户信息</span>
+          </h3>
+          <div class="info-grid" id="customerGrid"></div>
+        </div>
+
+        <!-- 样品信息表格 -->
+        <div class="result-section">
+          <h3 class="result-section-title">
+            <span class="section-badge section-badge--green">样品 &amp; 引物信息</span>
+            <span class="badge-count" id="sampleCount"></span>
+          </h3>
+          <div class="table-scroll">
+            <table class="data-table" id="samplesTable">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>样品名称</th>
+                  <th>样品类型</th>
+                  <th>载体名称</th>
+                  <th>抗性</th>
+                  <th>片段长度</th>
+                  <th>引物类别</th>
+                  <th>正向引物</th>
+                  <th>反向引物</th>
+                  <th>原始内容</th>
+                </tr>
+              </thead>
+              <tbody id="samplesBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-table" id="emptyTable" style="display:none">
+            <p>未识别到样品行，可能手写内容较少或图片质量需提升</p>
+          </div>
+        </div>
+
+        <!-- 备注 -->
+        <div class="result-section" id="remarksSection" style="display:none">
+          <h3 class="result-section-title">
+            <span class="section-badge section-badge--orange">备注信息</span>
+          </h3>
+          <div class="remarks-box" id="remarksContent"></div>
+        </div>
+
+        <!-- 识别统计 -->
+        <div class="stats-row" id="statsRow"></div>
+      </div>
+
+      <!-- 原始文本 -->
+      <div class="tab-pane" id="tab-raw">
+        <div class="raw-text-container" id="rawTextContainer"></div>
+      </div>
+
+      <!-- JSON 数据 -->
+      <div class="tab-pane" id="tab-json">
+        <div class="json-toolbar">
+          <span class="json-label">结构化 JSON 输出</span>
+          <button class="btn btn--xs btn--ghost" id="copyJsonInline">复制</button>
+        </div>
+        <pre class="json-viewer" id="jsonViewer"></pre>
+      </div>
+
+    </div><!-- /result-content -->
+  </section>
+</main>
+
+<!-- Toast 通知 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>

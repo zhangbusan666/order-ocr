@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>艾康健 · 测序订单 OCR 识别系统</title>
+<style>
+:root{--accent:#2563eb;--accent-hover:#1d4ed8;--accent-soft:#eff6ff;--accent-muted:rgba(37,99,235,.12);--bg:#f1f5f9;--surface:#fff;--surface-2:#f8fafc;--surface-3:#f1f5f9;--border:#e2e8f0;--border-light:#f0f4f8;--text:#0f172a;--text-2:#475569;--text-3:#94a3b8;--green:#10b981;--green-soft:#ecfdf5;--orange:#f59e0b;--orange-soft:#fffbeb;--red:#ef4444;--radius-sm:6px;--radius:12px;--radius-lg:18px;--radius-xl:24px;--shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);--shadow:0 4px 16px rgba(0,0,0,.07),0 1px 4px rgba(0,0,0,.04);--shadow-lg:0 12px 40px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.04);--topbar-h:60px;--transition:.2s cubic-bezier(.4,0,.2,1)}
+[data-theme=dark]{--accent:#3b82f6;--accent-hover:#60a5fa;--accent-soft:rgba(59,130,246,.15);--accent-muted:rgba(59,130,246,.1);--bg:#0f172a;--surface:#1e293b;--surface-2:#162032;--surface-3:#1a2744;--border:#1e3a5f;--border-light:#162032;--text:#f1f5f9;--text-2:#94a3b8;--text-3:#475569;--green-soft:rgba(16,185,129,.15);--orange-soft:rgba(245,158,11,.15);--shadow-sm:0 1px 3px rgba(0,0,0,.3);--shadow:0 4px 16px rgba(0,0,0,.3);--shadow-lg:0 12px 40px rgba(0,0,0,.4)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background var(--transition),color var(--transition);font-size:14px;line-height:1.6}
+
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:100;height:var(--topbar-h);background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.topbar-inner{max-width:1400px;margin:0 auto;padding:0 24px;height:100%;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo svg{width:36px;height:36px}
+.brand-text{display:flex;flex-direction:column;line-height:1.2}
+.brand-name{font-size:16px;font-weight:700;color:var(--text)}
+.brand-sub{font-size:11px;color:var(--text-3)}
+.topbar-nav{display:flex;align-items:center;gap:12px}
+.nav-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-2)}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot--green{background:var(--green);box-shadow:0 0 0 3px rgba(16,185,129,.2);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(16,185,129,.2)}50%{box-shadow:0 0 0 6px rgba(16,185,129,.05)}}
+
+/* Layout */
+.main-container{max-width:1400px;margin:0 auto;padding:24px;display:grid;grid-template-columns:380px 1fr;gap:20px;min-height:calc(100vh - var(--topbar-h));align-items:start}
+@media(max-width:900px){.main-container{grid-template-columns:1fr}}
+
+/* Panel */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.panel-header{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.panel-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:var(--text)}
+.panel-title svg{width:18px;height:18px;color:var(--accent)}
+.panel-desc{font-size:12px;color:var(--text-3);padding:4px 24px 16px;border-bottom:1px solid var(--border-light)}
+.panel-actions{display:flex;gap:8px}
+
+/* Drop Zone */
+.drop-zone{margin:20px 24px;border:2px dashed var(--border);border-radius:var(--radius-lg);background:var(--surface-2);transition:all var(--transition);cursor:pointer;position:relative;overflow:hidden;min-height:240px;display:flex;align-items:center;justify-content:center}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--accent-soft)}
+.drop-zone__content{text-align:center;padding:32px 24px;pointer-events:none;width:100%}
+.drop-icon{display:flex;justify-content:center;margin-bottom:16px}
+.drop-icon svg{width:64px;height:64px}
+.drop-primary{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.drop-secondary{font-size:12px;color:var(--text-3);margin-bottom:12px}
+.drop-hint{font-size:11px;color:var(--text-3);margin-top:12px}
+.drop-zone__content .btn{pointer-events:all}
+.drop-zone__preview{width:100%;height:100%;position:relative}
+.drop-zone__preview img{width:100%;height:240px;object-fit:contain;display:block;background:var(--surface-3)}
+.preview-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity var(--transition)}
+.drop-zone:hover .preview-overlay{opacity:1}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;padding:8px 16px;transition:all var(--transition);text-decoration:none;white-space:nowrap;font-family:inherit}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn svg{width:15px;height:15px;flex-shrink:0}
+.btn--primary{background:var(--accent);color:#fff}
+.btn--primary:not(:disabled):hover{background:var(--accent-hover);transform:translateY(-1px);box-shadow:0 4px 14px rgba(37,99,235,.35)}
+.btn--ghost{background:transparent;color:var(--text-2);border:1px solid var(--border)}
+.btn--ghost:hover{background:var(--surface-2);color:var(--text)}
+.btn--ghost-white{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.btn--ghost-white:hover{background:rgba(255,255,255,.25)}
+.btn--sm{padding:5px 12px;font-size:12px;border-radius:8px}
+.btn--xs{padding:3px 8px;font-size:11px;border-radius:6px}
+.btn--lg{padding:12px 20px;font-size:15px;border-radius:14px}
+.btn--full{width:100%}
+
+/* Upload actions */
+.upload-actions{padding:0 24px 16px}
+
+/* Progress */
+.progress-wrap{padding:0 24px 16px}
+.progress-bar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#60a5fa);border-radius:3px;transition:width .4s ease;position:relative;overflow:hidden}
+.progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+.progress-label{font-size:12px;color:var(--text-3);text-align:center}
+
+/* Tips */
+.tips-card{margin:0 24px 24px;padding:14px 16px;background:var(--accent-soft);border:1px solid var(--accent-muted);border-radius:var(--radius)}
+.tips-title{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px}
+.tips-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+.tips-list li{font-size:12px;color:var(--text-2);padding-left:14px;position:relative}
+.tips-list li::before{content:"·";position:absolute;left:4px;color:var(--accent)}
+
+/* Empty state */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;flex:1}
+.empty-illustration{margin-bottom:20px}
+.empty-illustration svg{width:120px;height:100px}
+.empty-title{font-size:15px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.empty-desc{font-size:13px;color:var(--text-3);text-align:center}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;padding:16px 24px 0;border-bottom:1px solid var(--border)}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;color:var(--text-3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all var(--transition);font-family:inherit;margin-bottom:-1px}
+.tab:hover{color:var(--text-2)}
+.tab--active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-pane{display:none;padding:20px 24px}
+.tab-pane--active{display:block}
+
+/* Result sections */
+.result-section{margin-bottom:24px}
+.result-section-title{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:14px;font-weight:600}
+.section-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.section-badge--blue{background:var(--accent-soft);color:var(--accent)}
+.section-badge--green{background:var(--green-soft);color:var(--green)}
+.section-badge--orange{background:var(--orange-soft);color:var(--orange)}
+.badge-count{font-size:12px;color:var(--text-3);font-weight:400}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.info-cell{background:var(--surface-2);border:1px solid var(--border-light);border-radius:var(--radius);padding:10px 14px}
+.info-cell__label{font-size:11px;color:var(--text-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.info-cell__value{font-size:14px;font-weight:500;color:var(--text);word-break:break-all}
+.info-cell__value--empty{color:var(--text-3);font-style:italic;font-weight:400}
+
+/* Table */
+.table-scroll{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{background:var(--surface-2);padding:10px 14px;text-align:left;font-weight:600;color:var(--text-2);font-size:12px;white-space:nowrap;border-bottom:1px solid var(--border)}
+.data-table td{padding:10px 14px;color:var(--text);border-bottom:1px solid var(--border-light);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tbody tr:hover{background:var(--surface-2)}
+.row-num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:var(--accent-soft);color:var(--accent);border-radius:8px;font-size:12px;font-weight:600}
+.empty-table{padding:24px;text-align:center;color:var(--text-3);font-size:13px;background:var(--surface-2);border-radius:var(--radius);border:1px dashed var(--border)}
+
+/* Remarks */
+.remarks-box{background:var(--orange-soft);border:1px solid rgba(245,158,11,.25);border-radius:var(--radius);padding:14px 16px;font-size:13px;color:var(--text-2);line-height:1.7}
+
+/* Stats */
+.stats-row{display:flex;gap:12px;flex-wrap:wrap}
+.stat-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-2)}
+.stat-chip strong{color:var(--text)}
+
+/* Raw text */
+.raw-text-container{display:flex;flex-direction:column;gap:6px;max-height:520px;overflow-y:auto}
+.raw-line{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--surface-2);border-radius:6px;font-size:13px}
+.raw-line__idx{flex-shrink:0;width:28px;height:20px;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border-radius:4px;font-size:10px;color:var(--text-3);font-weight:600}
+.raw-line__text{flex:1;color:var(--text)}
+.raw-line__conf{flex-shrink:0;font-size:11px;padding:2px 6px;border-radius:4px}
+.conf--high{background:var(--green-soft);color:var(--green)}
+.conf--mid{background:var(--orange-soft);color:var(--orange)}
+.conf--low{background:#fee2e2;color:var(--red)}
+
+/* JSON viewer */
+.json-toolbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#1e293b;border-radius:var(--radius) var(--radius) 0 0}
+.json-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.json-viewer{background:#0f172a;color:#e2e8f0;padding:16px;border-radius:0 0 var(--radius) var(--radius);font-size:12px;line-height:1.7;overflow:auto;max-height:520px;font-family:"JetBrains Mono","Fira Code","Consolas",monospace;white-space:pre}
+
+/* Toast */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.toast{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);font-size:13px;animation:slideUp .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast--success{border-left:3px solid var(--green)}
+.toast--error{border-left:3px solid var(--red)}
+.toast--info{border-left:3px solid var(--accent)}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-3)}
+
+/* Spinner */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Demo notice */
+.demo-notice{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #7dd3fc;border-radius:var(--radius);padding:12px 16px;margin:0 24px 16px;font-size:12px;color:#0369a1;display:flex;align-items:flex-start;gap:8px}
+[data-theme=dark] .demo-notice{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:#93c5fd}
+.demo-notice strong{font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="36" height="36" rx="10" fill="url(#g1)"/>
+          <path d="M8 18 Q18 8 28 18 Q18 28 8 18Z" fill="rgba(255,255,255,0.9)"/>
+          <circle cx="18" cy="18" r="4" fill="#2563eb"/>
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="36" y2="36"><stop offset="0%" stop-color="#1e40af"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">艾康健</span>
+        <span class="brand-sub">智能订单识别系统</span>
+      </div>
+    </div>
+    <nav class="topbar-nav">
+      <span class="nav-badge">
+        <span class="dot dot--green"></span>
+        PaddleOCR 引擎
+      </span>
+      <button class="btn btn--ghost" id="themeToggle" style="padding:6px 10px">
+        <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="main-container">
+
+  <!-- 左侧：上传区 -->
+  <section class="panel panel--upload">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        上传订单图片
+      </h2>
+    </div>
+    <p class="panel-desc">支持拍照上传或扫描件 · JPG / PNG / TIFF</p>
+
+    <div class="demo-notice">
+      <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15" style="flex-shrink:0;margin-top:1px"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+      <span><strong>演示模式</strong>：点击"开始识别"将使用内置示例数据演示结构化输出。部署 Flask 后端后可接入真实 PaddleOCR 识别。</span>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" hidden />
+      <div class="drop-zone__content" id="dropContent">
+        <div class="drop-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" rx="16" fill="var(--accent-soft)"/>
+            <path d="M32 16v20M22 26l10-10 10 10" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 44h32" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+            <rect x="12" y="44" width="40" height="8" rx="4" fill="var(--accent)" opacity=".15"/>
+          </svg>
+        </div>
+        <p class="drop-primary">拖拽图片到此处</p>
+        <p class="drop-secondary">或</p>
+        <button class="btn btn--primary" id="selectBtn">选择文件</button>
+        <p class="drop-hint">最大 20MB · 推荐分辨率 ≥ 300 DPI</p>
+      </div>
+      <div class="drop-zone__preview" id="dropPreview" style="display:none">
+        <img id="previewImg" alt="预览"/>
+        <div class="preview-overlay">
+          <button class="btn btn--ghost-white" id="changeBtn">更换图片</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="upload-actions">
+      <button class="btn btn--primary btn--lg btn--full" id="recognizeBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span id="recognizeBtnText">开始识别（演示）</span>
+      </button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <p class="progress-label" id="progressLabel">准备中...</p>
+    </div>
+
+    <div class="tips-card">
+      <p class="tips-title">💡 拍摄 &amp; 使用建议</p>
+      <ul class="tips-list">
+        <li>保持图片清晰，避免模糊或过曝</li>
+        <li>确保表格内容完整呈现在画面中</li>
+        <li>手写内容请工整填写，提高识别率</li>
+        <li>推荐使用扫描仪高清扫描（300+ DPI）</li>
+        <li>部署后端后可识别真实手写订单</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 右侧：结果区 -->
+  <section class="panel panel--result">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        识别结果
+      </h2>
+      <div class="panel-actions" id="resultActions" style="display:none">
+        <button class="btn btn--sm btn--ghost" id="copyJsonBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          复制 JSON
+        </button>
+        <button class="btn btn--sm btn--ghost" id="exportCsvBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出 CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="empty-illustration">
+        <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="20" y="10" width="80" height="80" rx="8" fill="var(--surface-2)" stroke="var(--border)" stroke-width="2"/>
+          <rect x="30" y="25" width="60" height="6" rx="3" fill="var(--border)"/>
+          <rect x="30" y="38" width="45" height="5" rx="2.5" fill="var(--border)" opacity=".6"/>
+          <rect x="30" y="50" width="50" height="5" rx="2.5" fill="var(--border)" opacity=".6"/>
+          <rect x="30" y="62" width="35" height="5" rx="2.5" fill="var(--border)" opacity=".4"/>
+          <circle cx="88" cy="78" r="18" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <path d="M82 78l4 4 8-8" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <p class="empty-title">等待识别</p>
+      <p class="empty-desc">上传订单图片后点击"开始识别"，<br/>结构化结果将在此展示</p>
+    </div>
+
+    <div class="result-content" id="resultContent" style="display:none">
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="structured">结构化视图</button>
+        <button class="tab" data-tab="raw">原始文本</button>
+        <button class="tab" data-tab="json">JSON 数据</button>
+      </div>
+
+      <div class="tab-pane tab-pane--active" id="tab-structured">
+        <div class="result-section">
+          <h3 class="result-section-title"><span class="section-badge section-badge--blue">客户信息</span></h3>
+          <div class="info-grid" id="customerGrid"></div>
+        </div>
+        <div class="result-section">
+          <h3 class="result-section-title">
+            <span class="section-badge section-badge--green">样品 &amp; 引物信息</span>
+            <span class="badge-count" id="sampleCount"></span>
+          </h3>
+          <div class="table-scroll" id="tableScroll">
+            <table class="data-table">
+              <thead><tr>
+                <th>序号</th><th>样品名称</th><th>样品类型</th><th>载体名称</th>
+                <th>抗性</th><th>片段长度</th><th>引物类别</th><th>正向引物</th>
+                <th>反向引物</th><th>备注</th>
+              </tr></thead>
+              <tbody id="samplesBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-table" id="emptyTable" style="display:none">未识别到样品行</div>
+        </div>
+        <div class="result-section" id="remarksSection" style="display:none">
+          <h3 class="result-section-title"><span class="section-badge section-badge--orange">备注信息</span></h3>
+          <div class="remarks-box" id="remarksContent"></div>
+        </div>
+        <div class="stats-row" id="statsRow"></div>
+      </div>
+
+      <div class="tab-pane" id="tab-raw">
+        <div class="raw-text-container" id="rawTextContainer"></div>
+      </div>
+
+      <div class="tab-pane" id="tab-json">
+        <div class="json-toolbar">
+          <span class="json-label">结构化 JSON 输出</span>
+          <button class="btn btn--xs btn--ghost" id="copyJsonInline" style="color:#94a3b8;border-color:#334155">复制</button>
+        </div>
+        <pre class="json-viewer" id="jsonViewer"></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ── 主题 ───────────────────────────────────
+const themeToggle=document.getElementById('themeToggle');
+const iconSun=document.getElementById('iconSun'),iconMoon=document.getElementById('iconMoon');
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('theme',t);iconSun.style.display=t==='dark'?'none':'';iconMoon.style.display=t==='dark'?'':'none'}
+(function(){const s=localStorage.getItem('theme');if(s){applyTheme(s);return}if(window.matchMedia('(prefers-color-scheme:dark)').matches)applyTheme('dark')})();
+themeToggle.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme')||'light';applyTheme(c==='dark'?'light':'dark')});
+
+// ── DOM ────────────────────────────────────
+const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+const selectBtn=document.getElementById('selectBtn'),changeBtn=document.getElementById('changeBtn');
+const dropContent=document.getElementById('dropContent'),dropPreview=document.getElementById('dropPreview');
+const previewImg=document.getElementById('previewImg'),recognizeBtn=document.getElementById('recognizeBtn');
+const recognizeBtnText=document.getElementById('recognizeBtnText'),progressWrap=document.getElementById('progressWrap');
+const progressFill=document.getElementById('progressFill'),progressLabel=document.getElementById('progressLabel');
+const emptyState=document.getElementById('emptyState'),resultContent=document.getElementById('resultContent');
+const resultActions=document.getElementById('resultActions');
+let currentFile=null,lastResult=null;
+
+selectBtn.addEventListener('click',()=>fileInput.click());
+changeBtn.addEventListener('click',e=>{e.stopPropagation();fileInput.click()});
+dropZone.addEventListener('click',()=>{if(!currentFile)fileInput.click()});
+fileInput.addEventListener('change',e=>{const f=e.target.files[0];if(f)loadFile(f);fileInput.value=''});
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)loadFile(f)});
+
+function loadFile(f){
+  if(!f.type.startsWith('image/')){showToast('请上传图片文件','error');return}
+  currentFile=f;
+  const url=URL.createObjectURL(f);
+  previewImg.src=url;
+  dropContent.style.display='none';
+  dropPreview.style.display='';
+  recognizeBtnText.textContent='开始识别';
+}
+
+// ── 演示数据 ───────────────────────────────
+const DEMO_DATA = {
+  customer: {
+    "客户姓名": "王芳",
+    "联系电话": "13912345678",
+    "email": "wangfang@whu.edu.cn",
+    "所属课题组": "分子生物学实验室",
+    "详细地址": "武汉市武昌区八一路299号",
+    "客户单位": "武汉大学生命科学学院",
+    "送测日期": "2024年3月18日"
+  },
+  samples: [
+    {"序号":"01","样品名称":"pUC19-GFP","样品类型":"质粒","载体名称":"pUC19","抗性":"Amp","片段长度":"1.2kb","引物类别":"通用引物","正向引物":"M13F","反向引物":"M13R","原始内容":"pUC19-GFP | 质粒 | pUC19 | Amp | 1.2kb"},
+    {"序号":"02","样品名称":"pET28a-His6","样品类型":"质粒","载体名称":"pET28a","抗性":"Kan","片段长度":"800bp","引物类别":"自带引物","正向引物":"T7 promoter","反向引物":"T7 terminator","原始内容":"pET28a-His6 | 质粒 | pET28a | Kan | 800bp"},
+    {"序号":"03","样品名称":"pCDNA3.1-EGFP","样品类型":"质粒","载体名称":"pCDNA3.1","抗性":"Amp","片段长度":"2.1kb","引物类别":"通用引物","正向引物":"T3","反向引物":"SP6","原始内容":"pCDNA3.1-EGFP | 质粒 | pCDNA3.1 | Amp | 2.1kb"},
+    {"序号":"04","样品名称":"pGEX-4T-1-GST","样品类型":"质粒","载体名称":"pGEX-4T-1","抗性":"Amp","片段长度":"650bp","引物类别":"通用引物","正向引物":"GEX-5P-1","反向引物":"GEX-3P-1","原始内容":"pGEX-4T-1-GST | 质粒 | pGEX | Amp | 650bp"},
+    {"序号":"05","样品名称":"PCR产物-16S","样品类型":"PCR未纯化","载体名称":"—","抗性":"—","片段长度":"1500bp","引物类别":"通用引物","正向引物":"27F","反向引物":"1492R","原始内容":"PCR产物-16S | PCR未纯化 | — | — | 1500bp"},
+  ],
+  remarks: "请尽快出结果，实验进度紧急。样品03和04需要双向测序。",
+  raw_texts: [
+    "艾康健","常规测序样品接收单","客户姓名","王芳","联系电话","13912345678",
+    "E-mail","wangfang@whu.edu.cn","所属课题组","分子生物学实验室",
+    "详细地址","武汉市武昌区八一路299号","客户单位","武汉大学生命科学学院",
+    "送测日期","2024年3月18日","样品信息","引物信息","序号","样品名称",
+    "样品类型","载体名称","抗性","片段长度","引物类别","引物名称",
+    "01","pUC19-GFP","质粒","pUC19","Amp","1.2kb","通用引物","M13F","M13R",
+    "02","pET28a-His6","质粒","pET28a","Kan","800bp","自带引物","T7 promoter","T7 terminator",
+    "03","pCDNA3.1-EGFP","质粒","pCDNA3.1","Amp","2.1kb","通用引物","T3","SP6",
+    "04","pGEX-4T-1-GST","质粒","pGEX-4T-1","Amp","650bp","通用引物","GEX-5P-1","GEX-3P-1",
+    "05","PCR产物-16S","PCR未纯化","—","—","1500bp","通用引物","27F","1492R",
+    "备注","请尽快出结果，实验进度紧急。样品03和04需要双向测序。",
+    "服务部邮箱：seq@icongene.com","服务电话：027-87530080","武汉艾康健生物科技有限公司"
+  ],
+  total_lines: 43,
+  _lines: [
+    {text:"艾康健",confidence:0.998},{text:"常规测序样品接收单",confidence:0.995},
+    {text:"客户姓名",confidence:0.993},{text:"王芳",confidence:0.982},
+    {text:"联系电话",confidence:0.995},{text:"13912345678",confidence:0.991},
+    {text:"E-mail",confidence:0.998},{text:"wangfang@whu.edu.cn",confidence:0.974},
+    {text:"所属课题组",confidence:0.991},{text:"分子生物学实验室",confidence:0.967},
+    {text:"详细地址",confidence:0.996},{text:"武汉市武昌区八一路299号",confidence:0.952},
+    {text:"客户单位",confidence:0.994},{text:"武汉大学生命科学学院",confidence:0.958},
+    {text:"送测日期",confidence:0.993},{text:"2024年3月18日",confidence:0.977},
+    {text:"01",confidence:0.999},{text:"pUC19-GFP",confidence:0.945},
+    {text:"质粒",confidence:0.997},{text:"pUC19",confidence:0.988},
+    {text:"Amp",confidence:0.996},{text:"1.2kb",confidence:0.971},
+    {text:"通用引物",confidence:0.993},{text:"M13F",confidence:0.989},
+    {text:"M13R",confidence:0.986},{text:"02",confidence:0.999},
+    {text:"pET28a-His6",confidence:0.931},{text:"质粒",confidence:0.997},
+    {text:"pET28a",confidence:0.985},{text:"Kan",confidence:0.994},
+    {text:"800bp",confidence:0.978},{text:"自带引物",confidence:0.982},
+    {text:"T7 promoter",confidence:0.965},{text:"T7 terminator",confidence:0.961},
+    {text:"03",confidence:0.999},{text:"pCDNA3.1-EGFP",confidence:0.924},
+    {text:"pCDNA3.1",confidence:0.952},{text:"2.1kb",confidence:0.963},
+    {text:"04",confidence:0.999},{text:"pGEX-4T-1-GST",confidence:0.918},
+    {text:"05",confidence:0.999},{text:"PCR产物-16S",confidence:0.935},
+    {text:"备注",confidence:0.998},{text:"请尽快出结果，实验进度紧急",confidence:0.873},
+  ]
+};
+
+// ── 识别按钮 ───────────────────────────────
+recognizeBtn.addEventListener('click',async()=>{
+  setRecognizing(true);
+  const steps=[[10,'正在分析图片...'],[30,'加载 PaddleOCR 引擎...'],[55,'文字区域检测中...'],[75,'识别中文字符...'],[90,'结构化解析中...']];
+  let si=0;
+  const timer=setInterval(()=>{if(si<steps.length){setProgress(...steps[si]);si++}},500);
+
+  // 模拟识别延迟（演示模式）
+  await new Promise(r=>setTimeout(r,3000));
+  clearInterval(timer);
+
+  // 若有真实后端则调用 /api/ocr，否则使用演示数据
+  let data=DEMO_DATA;
+  if(currentFile){
+    try{
+      const fd=new FormData();fd.append('file',currentFile);
+      const resp=await fetch('/api/ocr',{method:'POST',body:fd});
+      if(resp.ok){const j=await resp.json();data=j.data;}
+    }catch(e){/* 后端不可用，使用演示数据 */}
+  }
+
+  setProgress(100,'识别完成！');
+  setTimeout(()=>{
+    renderResult(data);lastResult=data;
+    setRecognizing(false);
+    showToast(`识别成功，共 ${data.total_lines} 行文本`,'success');
+  },400);
+});
+
+function setRecognizing(active){
+  recognizeBtn.disabled=active;
+  progressWrap.style.display=active?'':'none';
+  if(active)recognizeBtnText.innerHTML='<span class="spinner"></span> 识别中...';
+  else{recognizeBtnText.textContent='重新识别';recognizeBtn.disabled=false}
+}
+function setProgress(p,l){progressFill.style.width=p+'%';progressLabel.textContent=l}
+
+// ── 渲染 ───────────────────────────────────
+function renderResult(data){
+  emptyState.style.display='none';
+  resultContent.style.display='';
+  resultActions.style.display='';
+  renderCustomer(data.customer||{});
+  renderSamples(data.samples||[]);
+  renderRemarks(data.remarks||'');
+  renderRawText(data._lines||[],data.raw_texts||[]);
+  renderStats(data);
+  const clean=JSON.parse(JSON.stringify(data));delete clean._lines;
+  document.getElementById('jsonViewer').textContent=JSON.stringify(clean,null,2);
+}
+
+function renderCustomer(c){
+  const labels={'客户姓名':'客户姓名','联系电话':'联系电话','email':'E-mail','所属课题组':'课题组','详细地址':'详细地址','客户单位':'客户单位','送测日期':'送测日期'};
+  document.getElementById('customerGrid').innerHTML=Object.entries(labels).map(([k,l])=>{
+    const v=c[k]||'';
+    return `<div class="info-cell"><div class="info-cell__label">${l}</div><div class="info-cell__value ${v?'':'info-cell__value--empty'}">${v?esc(v):'未识别'}</div></div>`;
+  }).join('');
+}
+
+function renderSamples(samples){
+  const tbody=document.getElementById('samplesBody');
+  const ts=document.getElementById('tableScroll'),et=document.getElementById('emptyTable');
+  tbody.innerHTML='';
+  if(!samples.length){ts.style.display='none';et.style.display='';document.getElementById('sampleCount').textContent='';return}
+  ts.style.display='';et.style.display='none';
+  document.getElementById('sampleCount').textContent=`（共 ${samples.length} 条）`;
+  const cols=['样品名称','样品类型','载体名称','抗性','片段长度','引物类别','正向引物','反向引物','原始内容'];
+  samples.forEach(s=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="row-num">${s['序号']||'-'}</span></td>`+cols.map(c=>`<td title="${esc(s[c]||'')}">${esc(s[c]||'—')}</td>`).join('');
+    tbody.appendChild(tr);
+  });
+}
+
+function renderRemarks(t){
+  const rs=document.getElementById('remarksSection');
+  if(!t||t.trim().length<5){rs.style.display='none';return}
+  rs.style.display='';document.getElementById('remarksContent').textContent=t;
+}
+
+function renderRawText(lines,texts){
+  const c=document.getElementById('rawTextContainer');c.innerHTML='';
+  if(lines.length){
+    lines.forEach((l,i)=>{
+      const cf=l.confidence;
+      const cls=cf>=.9?'conf--high':cf>=.7?'conf--mid':'conf--low';
+      c.innerHTML+=`<div class="raw-line"><span class="raw-line__idx">${i+1}</span><span class="raw-line__text">${esc(l.text)}</span><span class="raw-line__conf ${cls}">${(cf*100).toFixed(0)}%</span></div>`;
+    });
+  }else{
+    texts.forEach((t,i)=>c.innerHTML+=`<div class="raw-line"><span class="raw-line__idx">${i+1}</span><span class="raw-line__text">${esc(t)}</span></div>`);
+  }
+}
+
+function renderStats(d){
+  document.getElementById('statsRow').innerHTML=`<span class="stat-chip">识别行数 <strong>${d.total_lines}</strong></span><span class="stat-chip">样品条数 <strong>${(d.samples||[]).length}</strong></span><span class="stat-chip">客户字段 <strong>${Object.values(d.customer||{}).filter(Boolean).length} / 7</strong></span>`;
+}
+
+// ── Tab ────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('tab--active'));
+    document.querySelectorAll('.tab-pane').forEach(x=>x.classList.remove('tab-pane--active'));
+    t.classList.add('tab--active');
+    const p=document.getElementById('tab-'+t.dataset.tab);if(p)p.classList.add('tab-pane--active');
+  });
+});
+
+// ── 复制 & 导出 ────────────────────────────
+function copyText(text,label){
+  navigator.clipboard.writeText(text).then(()=>showToast(label+'已复制','success')).catch(()=>showToast('复制失败','error'));
+}
+document.getElementById('copyJsonBtn').addEventListener('click',()=>{if(lastResult){const c=JSON.parse(JSON.stringify(lastResult));delete c._lines;copyText(JSON.stringify(c,null,2),'JSON')}});
+document.getElementById('copyJsonInline').addEventListener('click',()=>copyText(document.getElementById('jsonViewer').textContent,'JSON'));
+document.getElementById('exportCsvBtn').addEventListener('click',()=>{
+  if(!lastResult)return;
+  const h=['序号','样品名称','样品类型','载体名称','抗性','片段长度','引物类别','正向引物','反向引物'];
+  const rows=(lastResult.samples||[]).map(s=>h.map(k=>`"${(s[k]||'').replace(/"/g,'""')}"`));
+  const ci=Object.entries(lastResult.customer||{}).map(([k,v])=>`${k}: ${v}`).join(' | ');
+  const csv=[`# 客户信息,${ci}`,h.join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`测序订单_${new Date().toLocaleDateString('zh-CN')}.csv`;a.click();
+  showToast('CSV 已下载','success');
+});
+
+// ── Toast ──────────────────────────────────
+function showToast(msg,type='info',dur=3000){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');t.className=`toast toast--${type}`;
+  const icons={success:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="color:var(--green)"><path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/></svg>',error:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="color:var(--red)"><line x1="6" y1="6" x2="14" y2="14" stroke-linecap="round"/><line x1="14" y1="6" x2="6" y2="14" stroke-linecap="round"/></svg>',info:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="color:var(--accent)"><circle cx="10" cy="10" r="8"/><path d="M10 9v5" stroke-linecap="round"/></svg>'};
+  t.innerHTML=`${icons[type]||''} <span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},dur);
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+</script>
+</body>
+</html>
